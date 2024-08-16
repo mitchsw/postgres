@@ -33,7 +33,10 @@ extern "C"
 #endif
 
 #include "jit/llvmjit.h"
-
+#ifdef USE_JITLINK
+#include "llvm/ExecutionEngine/JITLink/EHFrameSupport.h"
+#include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
+#endif
 
 /*
  * C-API extensions.
@@ -100,5 +103,23 @@ LLVMTypeRef
 LLVMGlobalGetValueType(LLVMValueRef g)
 {
 	return llvm::wrap(llvm::unwrap<llvm::GlobalValue>(g)->getValueType());
+}
+#endif
+
+#ifdef USE_JITLINK
+/*
+ * There is no public C API to create ObjectLinkingLayer for JITLINK, create our own
+ */
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(llvm::orc::ExecutionSession, LLVMOrcExecutionSessionRef)
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(llvm::orc::ObjectLayer, LLVMOrcObjectLayerRef)
+
+LLVMOrcObjectLayerRef
+LLVMOrcCreateJitlinkObjectLinkingLayer(LLVMOrcExecutionSessionRef ES)
+{
+	assert(ES && "ES must not be null");
+	auto ObjLinkingLayer = new llvm::orc::ObjectLinkingLayer(*unwrap(ES));
+	ObjLinkingLayer->addPlugin(std::make_unique<llvm::orc::EHFrameRegistrationPlugin>(
+		*unwrap(ES), std::make_unique<llvm::jitlink::InProcessEHFrameRegistrar>()));
+	return wrap(ObjLinkingLayer);
 }
 #endif

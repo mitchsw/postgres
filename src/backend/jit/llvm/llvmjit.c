@@ -1316,6 +1316,10 @@ llvm_log_jit_error(void *ctx, LLVMErrorRef error)
 static LLVMOrcObjectLayerRef
 llvm_create_object_layer(void *Ctx, LLVMOrcExecutionSessionRef ES, const char *Triple)
 {
+#if defined(USE_JITLINK)
+	LLVMOrcObjectLayerRef objlayer =
+	LLVMOrcCreateJitlinkObjectLinkingLayer(ES);
+#else
 	LLVMOrcObjectLayerRef objlayer =
 	LLVMOrcCreateRTDyldObjectLinkingLayerWithSectionMemoryManager(ES);
 
@@ -1335,6 +1339,7 @@ llvm_create_object_layer(void *Ctx, LLVMOrcExecutionSessionRef ES, const char *T
 
 		LLVMOrcRTDyldObjectLinkingLayerRegisterJITEventListener(objlayer, l);
 	}
+#endif
 #endif
 
 	return objlayer;
